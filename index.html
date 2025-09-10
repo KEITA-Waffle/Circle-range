@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>円の内部の線分の長さ計算</title>
+    <!-- Tailwind CSSをCDNから読み込み -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Googleフォント 'Inter' を使用 */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-3xl bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 md:p-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-2 text-blue-600 dark:text-blue-400">円の内部の線分計算アプリ</h1>
+        <p class="text-center text-gray-600 dark:text-gray-400 mb-6">円の直径を5等分する点から引いた、円の内部の線分の長さを計算します。</p>
+
+        <!-- 半径コントローラー -->
+        <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <label for="radius-slider" class="block text-lg font-medium mb-2">半径 r: <span id="radius-value" class="font-bold text-blue-600 dark:text-blue-400">10.0</span> cm</label>
+            <input id="radius-slider" type="range" min="10" max="100" value="10" step="0.1" class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <!-- 描画と結果表示エリア -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <!-- Canvas描画エリア -->
+            <div class="w-full aspect-square bg-gray-100 dark:bg-gray-900/50 rounded-xl overflow-hidden">
+                <canvas id="circle-canvas"></canvas>
+            </div>
+
+            <!-- 計算結果エリア -->
+            <div class="space-y-4 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg h-full">
+                <h2 class="text-xl font-semibold border-b border-gray-300 dark:border-gray-600 pb-2">計算結果</h2>
+                <div class="space-y-3 text-base">
+                    <p>直径を5等分する点（中心から ±0.2r, ±0.6r の位置）に線分を描画します。</p>
+                    <div class="p-4 bg-blue-100 dark:bg-blue-900/50 rounded-md">
+                        <p class="font-medium">中心から <strong class="text-blue-600 dark:text-blue-400">±0.2r</strong> の位置</p>
+                        <p class="text-xl font-bold" id="length1">長さ: 0.00 cm</p>
+                    </div>
+                    <div class="p-4 bg-green-100 dark:bg-green-900/50 rounded-md">
+                        <p class="font-medium">中心から <strong class="text-green-600 dark:text-green-400">±0.6r</strong> の位置</p>
+                        <p class="text-xl font-bold" id="length2">長さ: 0.00 cm</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM要素の取得
+        const slider = document.getElementById('radius-slider');
+        const radiusValueSpan = document.getElementById('radius-value');
+        const canvas = document.getElementById('circle-canvas');
+        const ctx = canvas.getContext('2d');
+        const length1Span = document.getElementById('length1');
+        const length2Span = document.getElementById('length2');
+
+        // 描画と計算を行うメインの関数
+        function drawAndCalculate() {
+            // 現在のスライダーの値を取得
+            const r = parseFloat(slider.value);
+            radiusValueSpan.textContent = r.toFixed(1);
+
+            // Canvasのサイズを親要素に合わせる（高解像度対応）
+            const parent = canvas.parentElement;
+            const size = parent.clientWidth;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = size * dpr;
+            canvas.height = size * dpr;
+            ctx.scale(dpr, dpr);
+            
+            // 描画設定
+            const canvasCenter = size / 2;
+            const padding = 20;
+            const maxR = parseFloat(slider.max); // スライダーの最大値
+            const minR = parseFloat(slider.min); // スライダーの最小値
+
+            // 描画に利用する半径を計算
+            // rが最大の時に、paddingを考慮した最大サイズになるようにスケーリングする
+            const availableDrawingRadius = canvasCenter - padding;
+            // スライダーの値(minR〜maxR)を、描画領域の半径(0〜availableDrawingRadius)にマッピングする
+            const radiusRatio = (maxR - minR) > 0 ? (r - minR) / (maxR - minR) : 0;
+            const drawingRadius = availableDrawingRadius * radiusRatio;
+
+
+            // Canvasをクリア
+            ctx.clearRect(0, 0, size, size);
+
+            // 座標系をCanvasの中心に移動
+            ctx.save();
+            ctx.translate(canvasCenter, canvasCenter);
+
+            // 1. 円を描画
+            ctx.beginPath();
+            ctx.arc(0, 0, drawingRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = '#3b82f6'; // blue-500
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 2. 軸を描画 (軸は描画領域いっぱいに表示)
+            ctx.beginPath();
+            ctx.moveTo(-availableDrawingRadius, 0);
+            ctx.lineTo(availableDrawingRadius, 0);
+            ctx.moveTo(0, -availableDrawingRadius);
+            ctx.lineTo(0, availableDrawingRadius);
+            ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            
+            // 3. 線分を描画
+            const divisionPoints = [-0.6, -0.2, 0.2, 0.6];
+            ctx.lineWidth = 2;
+
+            // 半径が小さすぎて線分が描画できない場合は処理をスキップ
+            if (drawingRadius > 1) {
+                divisionPoints.forEach(p => {
+                    const scaledPos = p * drawingRadius;
+                    // 円の方程式 x^2 + y^2 = r^2 より、y = sqrt(r^2 - x^2)
+                    const segmentHalfLength = Math.sqrt(drawingRadius**2 - scaledPos**2);
+
+                    // y軸に平行な線分 (Vertical)
+                    ctx.beginPath();
+                    ctx.moveTo(scaledPos, -segmentHalfLength);
+                    ctx.lineTo(scaledPos, segmentHalfLength);
+                    ctx.strokeStyle = '#10b981'; // green-500
+                    ctx.stroke();
+                    
+                    // x軸に平行な線分 (Horizontal)
+                    ctx.beginPath();
+                    ctx.moveTo(-segmentHalfLength, scaledPos);
+                    ctx.lineTo(segmentHalfLength, scaledPos);
+                    ctx.strokeStyle = '#10b981'; // green-500
+                    ctx.stroke();
+                });
+
+                // 4. 交点を結ぶ赤い線を描画
+                const intersectionPoints = [];
+                const r_intersect = drawingRadius;
+                const ratios = [0.2, 0.6];
+
+                ratios.forEach(p => {
+                    // 垂直線との交点
+                    const x1 = p * r_intersect;
+                    const y1 = Math.sqrt(r_intersect**2 - x1**2);
+                    intersectionPoints.push({ x: x1, y: y1 });
+                    intersectionPoints.push({ x: x1, y: -y1 });
+                    intersectionPoints.push({ x: -x1, y: y1 });
+                    intersectionPoints.push({ x: -x1, y: -y1 });
+
+                    // 水平線との交点
+                    const y2 = p * r_intersect;
+                    const x2 = Math.sqrt(r_intersect**2 - y2**2);
+                    intersectionPoints.push({ x: x2, y: y2 });
+                    intersectionPoints.push({ x: x2, y: -y2 });
+                    intersectionPoints.push({ x: -x2, y: y2 });
+                    intersectionPoints.push({ x: -x2, y: -y2 });
+                });
+
+                // ポイントを角度でソートする（反時計回り）
+                intersectionPoints.sort((a, b) => Math.atan2(a.y, a.x) - Math.atan2(b.y, b.x));
+
+                // ソートされたポイントを線で結ぶ
+                if (intersectionPoints.length > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(intersectionPoints[0].x, intersectionPoints[0].y);
+                    for (let i = 1; i < intersectionPoints.length; i++) {
+                        ctx.lineTo(intersectionPoints[i].x, intersectionPoints[i].y);
+                    }
+                    // 最後の点から最初の点へ線を引いて閉じる
+                    ctx.closePath(); 
+                    
+                    ctx.strokeStyle = '#ef4444'; // red-500
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+            }
+
+
+            ctx.restore(); // 座標系を元に戻す
+
+            // 5. 線分の長さを計算して表示
+            // 円の方程式 r^2 = x^2 + y^2 を利用
+            // 長さ = 2 * y = 2 * sqrt(r^2 - x^2)
+            
+            // x = 0.2r の場合
+            const len1 = 2 * Math.sqrt(r**2 - (0.2 * r)**2);
+            // x = 0.6r の場合
+            const len2 = 2 * Math.sqrt(r**2 - (0.6 * r)**2);
+
+            length1Span.textContent = `長さ: ${len1.toFixed(2)} cm`;
+            length2Span.textContent = `長さ: ${len2.toFixed(2)} cm`;
+        }
+
+        // イベントリスナーの設定
+        slider.addEventListener('input', drawAndCalculate);
+
+        // ページの表示サイズが変わった時に再描画
+        const resizeObserver = new ResizeObserver(() => {
+            drawAndCalculate();
+        });
+        resizeObserver.observe(canvas.parentElement);
+        
+        // 初期描画
+        window.onload = drawAndCalculate;
+    </script>
+</body>
+</html>
+
+
+
