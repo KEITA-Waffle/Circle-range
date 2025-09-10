@@ -20,10 +20,16 @@
         <h1 class="text-2xl md:text-3xl font-bold text-center mb-2 text-blue-600 dark:text-blue-400">円の内部の線分計算アプリ</h1>
         <p class="text-center text-gray-600 dark:text-gray-400 mb-6">円の直径を5等分する点から引いた、円の内部の線分の長さを計算します。</p>
 
-        <!-- 半径コントローラー -->
+        <!-- コントローラー -->
         <div class="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-            <label for="radius-slider" class="block text-lg font-medium mb-2">半径 r: <span id="radius-value" class="font-bold text-blue-600 dark:text-blue-400">10.0</span> cm</label>
-            <input id="radius-slider" type="range" min="10" max="100" value="10" step="0.1" class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
+            <div>
+                <label for="radius-slider" class="block text-lg font-medium mb-2">半径 r: <span id="radius-value" class="font-bold text-blue-600 dark:text-blue-400">10.0</span> cm</label>
+                <input id="radius-slider" type="range" min="10" max="100" value="10" step="0.1" class="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded-lg appearance-none cursor-pointer">
+            </div>
+            <div class="mt-4 flex items-center justify-start">
+                <input type="checkbox" id="toggle-circle-stroke" class="h-4 w-4 rounded border-gray-300 dark:border-gray-500 text-blue-600 focus:ring-blue-500 dark:bg-gray-600 dark:focus:ring-offset-gray-800" checked>
+                <label for="toggle-circle-stroke" class="ml-2 block text-sm font-medium">円周の線を表示する</label>
+            </div>
         </div>
 
         <!-- 描画と結果表示エリア -->
@@ -59,6 +65,7 @@
         const ctx = canvas.getContext('2d');
         const length1Span = document.getElementById('length1');
         const length2Span = document.getElementById('length2');
+        const toggleCircleStroke = document.getElementById('toggle-circle-stroke');
 
         // 描画と計算を行うメインの関数
         function drawAndCalculate() {
@@ -95,12 +102,14 @@
             ctx.save();
             ctx.translate(canvasCenter, canvasCenter);
 
-            // 1. 円を描画
-            ctx.beginPath();
-            ctx.arc(0, 0, drawingRadius, 0, 2 * Math.PI);
-            ctx.strokeStyle = '#3b82f6'; // blue-500
-            ctx.lineWidth = 2;
-            ctx.stroke();
+            // 1. 円を描画 (チェックボックスがONの場合のみ)
+            if (toggleCircleStroke.checked) {
+                ctx.beginPath();
+                ctx.arc(0, 0, drawingRadius, 0, 2 * Math.PI);
+                ctx.strokeStyle = '#3b82f6'; // blue-500
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
 
             // 2. 軸を描画 (軸は描画領域いっぱいに表示)
             ctx.beginPath();
@@ -198,6 +207,8 @@
 
         // イベントリスナーの設定
         slider.addEventListener('input', drawAndCalculate);
+        toggleCircleStroke.addEventListener('change', drawAndCalculate);
+
 
         // ページの表示サイズが変わった時に再描画
         const resizeObserver = new ResizeObserver(() => {
@@ -210,6 +221,4 @@
     </script>
 </body>
 </html>
-
-
 
